@@ -10,7 +10,7 @@
     "test": "vitest",
     "cf-typegen": "wrangler types",
     "db:create": "wrangler d1 create groupprivacyplusbot-db",
-    "db:migrate": "wrangler d1 execute groupprivacyplusbot-db --file=schema.sql",
+    "db:migrate": "wrangler d1 execute groupprivacyplusbot-db --file=schema.sql --remote",
     "db:migrate:local": "wrangler d1 execute groupprivacyplusbot-db --local --file=schema.sql",
     "webhook:set": "node scripts/set-webhook.mjs",
     "webhook:delete": "node scripts/delete-webhook.mjs",
