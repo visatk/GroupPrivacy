@@ -1,0 +1,54 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "groupprivacyplusbot",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-05-03",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"upload_source_maps": true,
+	"placement": { "mode": "smart" },
+
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "groupprivacyplusbot-db",
+			"database_id": "YOUR_D1_DATABASE_ID"
+		}
+	],
+
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "YOUR_KV_NAMESPACE_ID",
+			"preview_id": "YOUR_KV_PREVIEW_ID"
+		}
+	],
+
+	"queues": {
+		"producers": [
+			{ "queue": "bot-tasks", "binding": "TASK_QUEUE" }
+		],
+		"consumers": [
+			{
+				"queue": "bot-tasks",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 3
+			}
+		]
+	},
+
+	"triggers": {
+		"crons": ["*/2 * * * *"]
+	},
+
+	"vars": {
+		"BOT_USERNAME": "GroupPrivacyPlusBot",
+		"LOG_LEVEL": "info"
+	}
+
+	// Secrets (set via `wrangler secret put`):
+	// BOT_TOKEN        - Telegram Bot Token from @BotFather
+	// WEBHOOK_SECRET   - Random secret for webhook validation
+	// SUPER_ADMINS     - Comma-separated Telegram user IDs of bot super-admins
+}
