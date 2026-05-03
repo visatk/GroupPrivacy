@@ -4,7 +4,7 @@
   "private": true,
   "description": "Production-grade Telegram Group Manager Bot on Cloudflare Workers",
   "scripts": {
-    "deploy": "npm run db:migrate && npm run cf-typegen && wrangler deploy",
+    "deploy": "npm run cf-typegen && wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest",
