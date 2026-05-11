@@ -394,6 +394,10 @@ export interface TelegramApiResponse<T = unknown> {
   result?: T;
   description?: string;
   error_code?: number;
+  parameters?: {
+    retry_after?: number;
+    migrate_to_chat_id?: number;
+  };
 }
 
 export interface ParsedTime {

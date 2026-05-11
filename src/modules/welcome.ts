@@ -23,9 +23,13 @@ export function setupWelcome(router: Router) {
             .replace('{username}', member.username ? `@${member.username}` : member.first_name);
 
           if (row.welcome_file_id) {
-             await client.sendNote(ctx.chatId, formattedMsg, row.welcome_file_id, row.welcome_file_type);
+             await client.sendNote(ctx.chatId, formattedMsg, row.welcome_file_id, row.welcome_file_type, {
+                parse_mode: row.welcome_parse_mode === 'HTML' ? 'HTML' : 'Markdown'
+             });
           } else {
-             await client.sendMessage(ctx.chatId, formattedMsg);
+             await client.sendMessage(ctx.chatId, formattedMsg, {
+                parse_mode: row.welcome_parse_mode === 'HTML' ? 'HTML' : 'Markdown'
+             });
           }
         }
       }
@@ -45,9 +49,13 @@ export function setupWelcome(router: Router) {
 
         const client = getTelegramClient(ctx.env.BOT_TOKEN);
         if (row.goodbye_file_id) {
-            await client.sendNote(ctx.chatId, formattedMsg, row.goodbye_file_id, row.goodbye_file_type);
+            await client.sendNote(ctx.chatId, formattedMsg, row.goodbye_file_id, row.goodbye_file_type, {
+               parse_mode: row.goodbye_parse_mode === 'HTML' ? 'HTML' : 'Markdown'
+            });
         } else {
-            await client.sendMessage(ctx.chatId, formattedMsg);
+            await client.sendMessage(ctx.chatId, formattedMsg, {
+               parse_mode: row.goodbye_parse_mode === 'HTML' ? 'HTML' : 'Markdown'
+            });
         }
       }
     }

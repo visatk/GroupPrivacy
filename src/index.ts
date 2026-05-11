@@ -104,4 +104,59 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
   },
+
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Process expired bans
+    const expiredBans = await env.DB.prepare('DELETE FROM bans WHERE expires_at <= ? RETURNING chat_id, user_id').bind(now).all();
+    if (expiredBans.results) {
+      for (const row of expiredBans.results) {
+        await env.TASK_QUEUE.send({ type: 'unban', chatId: row.chat_id as number, userId: row.user_id as number, executeAt: now });
+      }
+    }
+
+    // Process expired mutes
+    const expiredMutes = await env.DB.prepare('DELETE FROM mutes WHERE expires_at <= ? RETURNING chat_id, user_id').bind(now).all();
+    if (expiredMutes.results) {
+      for (const row of expiredMutes.results) {
+        await env.TASK_QUEUE.send({ type: 'unmute', chatId: row.chat_id as number, userId: row.user_id as number, executeAt: now });
+      }
+    }
+
+    // Process expired captchas
+    const expiredCaptchas = await env.DB.prepare('DELETE FROM captcha_pending WHERE expires_at <= ? RETURNING chat_id, user_id, message_id').bind(now).all();
+    if (expiredCaptchas.results) {
+      for (const row of expiredCaptchas.results) {
+        await env.TASK_QUEUE.send({ type: 'captcha_expire', chatId: row.chat_id as number, userId: row.user_id as number, messageId: row.message_id as number, executeAt: now });
+      }
+    }
+  },
+
+  async queue(batch: MessageBatch<import('./types').TaskPayload>, env: Env, ctx: ExecutionContext): Promise<void> {
+    const client = import('./lib/telegram').then(m => m.getTelegramClient(env.BOT_TOKEN));
+    for (const msg of batch.messages) {
+      try {
+        const payload = msg.body;
+        const c = await client;
+        if (payload.type === 'unban' && payload.userId) {
+          await c.unbanChatMember(payload.chatId, payload.userId);
+        } else if (payload.type === 'unmute' && payload.userId) {
+          await c.unmuteUser(payload.chatId, payload.userId);
+        } else if (payload.type === 'delete_message' && payload.messageId) {
+          await c.deleteMessage(payload.chatId, payload.messageId);
+        } else if (payload.type === 'captcha_expire' && payload.userId) {
+          await c.banChatMember(payload.chatId, payload.userId);
+          await c.unbanChatMember(payload.chatId, payload.userId); // Kick
+          if (payload.messageId) {
+            await c.deleteMessage(payload.chatId, payload.messageId);
+          }
+        }
+        msg.ack();
+      } catch (error) {
+        console.error("Queue task failed:", error);
+        msg.retry();
+      }
+    }
+  }
 } satisfies ExportedHandler<Env>;

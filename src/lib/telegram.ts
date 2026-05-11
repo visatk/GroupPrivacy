@@ -36,7 +36,7 @@ export class TelegramClient {
     const data = await res.json() as TelegramApiResponse<T>;
 
     if (!data.ok) {
-      const err = new TelegramError(data.description ?? 'Unknown error', data.error_code ?? 0, method);
+      const err = new TelegramError(data.description ?? 'Unknown error', data.error_code ?? 0, method, data.parameters);
       throw err;
     }
 
@@ -403,13 +403,17 @@ export class TelegramClient {
 // ============================================================
 
 export class TelegramError extends Error {
+  public readonly retryAfter?: number;
+
   constructor(
     message: string,
     public readonly code: number,
     public readonly method: string,
+    parameters?: { retry_after?: number }
   ) {
     super(message);
     this.name = 'TelegramError';
+    this.retryAfter = parameters?.retry_after;
   }
 
   get isPermission(): boolean {
