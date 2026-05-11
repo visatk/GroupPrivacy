@@ -83,6 +83,13 @@ export default {
       return new Response('OK', { status: 200 });
     }
 
+    // Validate Telegram Webhook Secret
+    const secretToken = request.headers.get('x-telegram-bot-api-secret-token');
+    if (env.WEBHOOK_SECRET && secretToken !== env.WEBHOOK_SECRET) {
+      console.warn("Unauthorized webhook request");
+      return new Response('Unauthorized', { status: 401 });
+    }
+
     try {
       const update = await request.json() as TelegramUpdate;
       

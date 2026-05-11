@@ -65,14 +65,37 @@ export function setupNotes(router: Router) {
   });
 
   router.command('notes', async (ctx, next) => {
-    const { results } = await ctx.env.DB.prepare('SELECT name FROM notes WHERE chat_id = ?').bind(ctx.chatId).all();
+    const searchQuery = ctx.args.join(' ');
+    let results: any[];
+
+    if (searchQuery) {
+      // Use FTS to search notes
+      const stmt = await ctx.env.DB.prepare(`
+        SELECT name, snippet(notes_fts, 1, '<b>', '</b>', '...', 10) as snippet 
+        FROM notes_fts 
+        WHERE chat_id = ? AND notes_fts MATCH ?
+        ORDER BY rank
+      `).bind(ctx.chatId, searchQuery).all();
+      results = stmt.results;
+    } else {
+      const stmt = await ctx.env.DB.prepare('SELECT name FROM notes WHERE chat_id = ?').bind(ctx.chatId).all();
+      results = stmt.results;
+    }
+
     if (!results || results.length === 0) {
-      await sendReply(ctx, "There are no notes in this chat.");
+      await sendReply(ctx, searchQuery ? "No notes found matching your search." : "There are no notes in this chat.");
       return;
     }
 
-    const noteList = results.map(r => `- \`#${r.name}\``).join('\n');
-    await sendReply(ctx, `Notes in this chat:\n${noteList}`, { parse_mode: 'Markdown' });
+    const noteList = results.map(r => {
+      let line = `- \`#${r.name}\``;
+      if (r.snippet) {
+        line += `\n  <i>${r.snippet}</i>`;
+      }
+      return line;
+    }).join('\n');
+
+    await sendReply(ctx, `Notes in this chat:\n${noteList}`, { parse_mode: 'HTML' });
   });
 
   router.command('clear', async (ctx, next) => {

@@ -70,14 +70,37 @@ export function setupFilters(router: Router) {
   });
 
   router.command('filters', async (ctx, next) => {
-    const { results } = await ctx.env.DB.prepare('SELECT trigger FROM filters WHERE chat_id = ?').bind(ctx.chatId).all();
+    const searchQuery = ctx.args.join(' ');
+    let results: any[];
+
+    if (searchQuery) {
+      // Use FTS to search filters
+      const stmt = await ctx.env.DB.prepare(`
+        SELECT trigger, snippet(filters_fts, 1, '<b>', '</b>', '...', 10) as snippet 
+        FROM filters_fts 
+        WHERE chat_id = ? AND filters_fts MATCH ?
+        ORDER BY rank
+      `).bind(ctx.chatId, searchQuery).all();
+      results = stmt.results;
+    } else {
+      const stmt = await ctx.env.DB.prepare('SELECT trigger FROM filters WHERE chat_id = ?').bind(ctx.chatId).all();
+      results = stmt.results;
+    }
+
     if (!results || results.length === 0) {
-      await sendReply(ctx, "No filters in this chat.");
+      await sendReply(ctx, searchQuery ? "No filters found matching your search." : "No filters in this chat.");
       return;
     }
 
-    const filterList = results.map(r => `- \`${r.trigger}\``).join('\n');
-    await sendReply(ctx, `Filters in this chat:\n${filterList}`, { parse_mode: 'Markdown' });
+    const filterList = results.map(r => {
+      let line = `- \`${r.trigger}\``;
+      if (r.snippet) {
+        line += `\n  <i>${r.snippet}</i>`;
+      }
+      return line;
+    }).join('\n');
+
+    await sendReply(ctx, `Filters in this chat:\n${filterList}`, { parse_mode: 'HTML' });
   });
 
   // Middleware to check filters on every text message

@@ -359,3 +359,46 @@ INSERT OR IGNORE INTO bot_stats(key, value) VALUES
   ('total_messages', 0),
   ('total_bans', 0),
   ('total_warns', 0);
+
+-- ============================================================
+-- FULL-TEXT SEARCH (FTS)
+-- ============================================================
+
+-- FTS for Notes
+CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+  name, content, chat_id UNINDEXED,
+  content='notes', content_rowid='id'
+);
+
+CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN
+  INSERT INTO notes_fts(rowid, name, content, chat_id) VALUES (new.id, new.name, new.content, new.chat_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN
+  INSERT INTO notes_fts(notes_fts, rowid, name, content, chat_id) VALUES ('delete', old.id, old.name, old.content, old.chat_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
+  INSERT INTO notes_fts(notes_fts, rowid, name, content, chat_id) VALUES ('delete', old.id, old.name, old.content, old.chat_id);
+  INSERT INTO notes_fts(rowid, name, content, chat_id) VALUES (new.id, new.name, new.content, new.chat_id);
+END;
+
+-- FTS for Filters
+CREATE VIRTUAL TABLE IF NOT EXISTS filters_fts USING fts5(
+  trigger, content, chat_id UNINDEXED,
+  content='filters', content_rowid='id'
+);
+
+CREATE TRIGGER IF NOT EXISTS filters_ai AFTER INSERT ON filters BEGIN
+  INSERT INTO filters_fts(rowid, trigger, content, chat_id) VALUES (new.id, new.trigger, new.content, new.chat_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS filters_ad AFTER DELETE ON filters BEGIN
+  INSERT INTO filters_fts(filters_fts, rowid, trigger, content, chat_id) VALUES ('delete', old.id, old.trigger, old.content, old.chat_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS filters_au AFTER UPDATE ON filters BEGIN
+  INSERT INTO filters_fts(filters_fts, rowid, trigger, content, chat_id) VALUES ('delete', old.id, old.trigger, old.content, old.chat_id);
+  INSERT INTO filters_fts(rowid, trigger, content, chat_id) VALUES (new.id, new.trigger, new.content, new.chat_id);
+END;
+
